@@ -1,0 +1,41 @@
+Proprietary License Agreement
+
+This Proprietary License Agreement ("Agreement") is made and entered into by and between:
+
+**Licensor**: Gutu Daniil
+**Address**: Moldova, Chisinau, Miron Costin 20, 145
+**Email**: gutudank@gmail.com
+
+**Licensee**: gutudaniil17
+**Address**: Moldova, Chisinau, Miron Costin 20, 145
+
+**Effective Date**: 28 Jan 2025
+
+1. **Grant of License**:
+   Gutu Daniil ("Licensor") grants you a non-exclusive, non-transferable license to use the software DrinkStockBot ("Software") for personal or commercial purposes, subject to the terms of this Agreement.
+
+2. **Restrictions**:
+   You may not:
+   a. Distribute, sell, or lease the Software to any third party without prior written consent from Gutu Daniil.
+   b. Modify, reverse engineer, or create derivative works based on the Software.
+   c. Use the Software in any manner that violates the laws of the Republic of Moldova or any applicable international laws.
+
+3. **Intellectual Property Rights**:
+   The Software and any related documentation are the exclusive property of Gutu Daniil. All rights not expressly granted in this Agreement are reserved.
+
+4. **Termination**:
+   This license will terminate automatically if you fail to comply with any of the terms of this Agreement. Upon termination, you must cease all use of the Software and destroy all copies in your possession.
+
+5. **Governing Law**:
+   This Agreement shall be governed by and construed in accordance with the laws of the Republic of Moldova, including the Constitution of the Republic of Moldova and applicable international treaties.
+
+6. **Limitation of Liability**:
+   In no event shall Gutu Daniil be liable for any indirect, incidental, special, or consequential damages arising out of the use or inability to use the Software, even if advised of the possibility of such damages.
+
+7. **Acceptance**:
+   By using this Software, you agree to the terms of this Agreement.
+
+**Contact Information**:
+For any questions regarding this Agreement, please contact:
+Gutu Daniil
+Email: gutudanik@gmail.com
