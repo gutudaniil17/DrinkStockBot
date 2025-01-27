@@ -14,6 +14,9 @@ logger = logging.getLogger(__name__)
 # Define states
 CONTACT, BACK_TO_START, MAP, OFFER, REVIEW, COCKTAIL_RECIPE = range(6)
 
+def read_file(file_name: str) -> str:
+    with open(file_name, 'r', encoding='utf-8') as file:
+        return file.read()
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     """Starts the conversation and greets the user."""
@@ -26,8 +29,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
 
-    with open('start_text.html', 'r', encoding='utf-8') as file:
-        start_text = file.read()
+    start_text = read_file('start_text.html')
 
     await update.message.reply_photo(
         photo='https://libercard.md/storage/partner/February2021/78tUbaCsWGg58W9D0L1D.jpg',
@@ -41,8 +43,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
 
 async def cocktail_recipe(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     """Displays the cocktail recipe with a link to the YouTube video."""
-    with open('cocktail_recipe.html', 'r', encoding='utf-8') as file:
-        recipe_info = file.read()
+    recipe_info = read_file('cocktail_recipe.html')
 
     keyboard = [[InlineKeyboardButton("Inapoi", callback_data='start')]]
     reply_markup = InlineKeyboardMarkup(keyboard)
@@ -54,8 +55,7 @@ async def cocktail_recipe(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
 
 async def contact(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     """Displays contact information."""
-    with open('contact_info.html', 'r', encoding='utf-8') as file:
-        contact_info = file.read()
+    contact_info = read_file('contact_info.html')
 
     keyboard = [[InlineKeyboardButton("Inapoi", callback_data='start')]]
     reply_markup = InlineKeyboardMarkup(keyboard)
@@ -67,8 +67,7 @@ async def contact(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
 
 async def map_locations(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     """Displays the list of city districts and addresses with Google Maps links."""
-    with open('map_locations.html', 'r', encoding='utf-8') as file:
-        districts_info = file.read()
+    districts_info = read_file('map_locations.html')
 
     keyboard = [[InlineKeyboardButton("Inapoi", callback_data='start')]]
     reply_markup = InlineKeyboardMarkup(keyboard)
@@ -80,10 +79,7 @@ async def map_locations(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
 
 async def offer(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     """Displays a series of photos for the offer of the month as a single message."""
-    offer_photos = [
-        'https://scontent.fkiv8-1.fna.fbcdn.net/v/t39.30808-6/474901039_1197331885731034_8905770824111627649_n.jpg?_nc_cat=110&ccb=1-7&_nc_sid=833d8c&_nc_ohc=9wrXsl1-NiAQ7kNvgHCYYxO&_nc_zt=23&_nc_ht=scontent.fkiv8-1.fna&_nc_gid=ANYOHkiuDLCA609SR_Vf2iY&oh=00_AYDLZ1IlKCZ71BeCiGIt3xo3T2cbccao5_GrkIvLGab-Bg&oe=679DCD52',
-        'https://scontent.fkiv8-1.fna.fbcdn.net/v/t39.30808-6/473289075_1197331932397696_4280668545222018533_n.jpg?_nc_cat=102&ccb=1-7&_nc_sid=833d8c&_nc_ohc=JrMQDoERQ0gQ7kNvgGGVXOI&_nc_zt=23&_nc_ht=scontent.fkiv8-1.fna&_nc_gid=Aw4avg_GtlvsKGye2mmoXwb&oh=00_AYBiZLfxqo3PPeq7WHNfihM8sw2OuOhG4_CeP3JNpD4Etw&oe=679DC38E'
-    ]
+    offer_photos = read_file('offer_photos.txt').split('\n')
 
     media = [InputMediaPhoto(photo) for photo in offer_photos]
 
@@ -96,8 +92,7 @@ async def offer(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
 
 async def review(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     """Displays the review message with a link to the Google Form."""
-    with open('review.html', 'r', encoding='utf-8') as file:
-        review_info = file.read()
+    review_info = read_file('review.html')
 
     keyboard = [[InlineKeyboardButton("Inapoi", callback_data='start')]]
     reply_markup = InlineKeyboardMarkup(keyboard)
@@ -115,8 +110,7 @@ async def handle_back(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int
 
 def main() -> None:
     """Run the bot."""
-    with open('.env', 'r', encoding='utf-8') as file:
-        API_KEY = file.read()
+    API_KEY = read_file('.env')
     application = Application.builder().token(API_KEY).build()
 
     # Set up conversation handler
