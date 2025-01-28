@@ -20,12 +20,11 @@ def read_file(file_name: str) -> str:
         return file.read()
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    """Starts the conversation and greets the user."""
+    """Starts the conversation and greets the user with a persistent keyboard."""
+    # Define the keyboard layout
     keyboard = [
-        [InlineKeyboardButton('Contacte', callback_data='contact')],
-        [InlineKeyboardButton('Harta magazinelor', callback_data='map')],
-        [InlineKeyboardButton('Oferta lunii', callback_data='offer')],
-        [InlineKeyboardButton('Lăsați o recenzie anonimă', callback_data='review')],
+        [InlineKeyboardButton('Harta magazinelor', callback_data='map'), InlineKeyboardButton('Oferta lunii', callback_data='offer')],
+        [InlineKeyboardButton('Contacte', callback_data='contact'), InlineKeyboardButton('Lăsați o recenzie anonimă', callback_data='review')],
         [InlineKeyboardButton('Rețetă cocktail pe viitor', callback_data='cocktail')]
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
@@ -40,6 +39,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     )
 
     return BACK_TO_START
+
 
 async def contact(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     """Displays contact information."""
