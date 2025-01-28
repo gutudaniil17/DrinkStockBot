@@ -46,7 +46,7 @@ async def contact(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     await update.callback_query.answer()  # Acknowledge the callback query
     contact_info = read_file('contact_info.html')
 
-    keyboard = [[InlineKeyboardButton("Inapoi", callback_data='start')]]
+    keyboard = [[InlineKeyboardButton("Înapoi", callback_data='start')]]
     reply_markup = InlineKeyboardMarkup(keyboard)
 
     await update.callback_query.message.reply_text(contact_info, parse_mode='HTML', reply_markup=reply_markup)
@@ -58,7 +58,7 @@ async def map_locations(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
     await update.callback_query.answer()  # Acknowledge the callback query
     districts_info = read_file('map_locations.html')
 
-    keyboard = [[InlineKeyboardButton("Inapoi", callback_data='start')]]
+    keyboard = [[InlineKeyboardButton("Înapoi", callback_data='start')]]
     reply_markup = InlineKeyboardMarkup(keyboard)
 
     await update.callback_query.message.reply_text(districts_info, parse_mode='HTML', reply_markup=reply_markup)
@@ -82,7 +82,7 @@ async def review(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     await update.callback_query.answer()  # Acknowledge the callback query
     review_info = read_file('review.html')
 
-    keyboard = [[InlineKeyboardButton("Inapoi", callback_data='start')]]
+    keyboard = [[InlineKeyboardButton("Înapoi", callback_data='start')]]
     reply_markup = InlineKeyboardMarkup(keyboard)
 
     await update.callback_query.message.reply_text(review_info, parse_mode='HTML', reply_markup=reply_markup)
@@ -94,7 +94,7 @@ async def cocktail_recipe(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
     await update.callback_query.answer()  # Acknowledge the callback query
     recipe_info = read_file('cocktail_recipe.html')
 
-    keyboard = [[InlineKeyboardButton("Inapoi", callback_data='start')]]
+    keyboard = [[InlineKeyboardButton("Înapoi", callback_data='start')]]
     reply_markup = InlineKeyboardMarkup(keyboard)
 
     await update.callback_query.message.reply_text(recipe_info, parse_mode='HTML', reply_markup=reply_markup)
