@@ -80,7 +80,7 @@ async def offer(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     await context.bot.send_media_group(chat_id=update.callback_query.from_user.id, media=media)
 
     # Add the "Înapoi" button after sending the offers
-    keyboard = [[InlineKeyboardButton("Înapoi", callback_data='start')]]
+    keyboard = [[InlineKeyboardButton("Înapoi", callback_data='back')]]
     reply_markup = InlineKeyboardMarkup(keyboard)
 
     await update.callback_query.message.reply_text("Acestea sunt ofertele lunii! Apasă 'Înapoi' pentru a reveni.",
@@ -117,9 +117,26 @@ async def cocktail_recipe(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
 
 async def handle_back(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     """Handles the back button to return to the start message."""
-    await start(update, context)
-    return BACK_TO_START
+    await update.callback_query.answer()
+    keyboard = [
+        [InlineKeyboardButton('Harta magazinelor', callback_data='map'),
+         InlineKeyboardButton('Oferta lunii', callback_data='offer')],
+        [InlineKeyboardButton('Contacte', callback_data='contact'),
+         InlineKeyboardButton('Lăsați o recenzie anonimă', callback_data='review')],
+        [InlineKeyboardButton('Rețetă cocktail pe viitor', callback_data='cocktail')]
+    ]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    start_text = read_file('start_text.html')
 
+    await update.callback_query.message.edit_media(
+        media=InputMediaPhoto(
+            media='https://libercard.md/storage/partner/February2021/78tUbaCsWGg58W9D0L1D.jpg',
+            caption=start_text,
+            parse_mode='HTML'
+        ),
+        reply_markup=reply_markup
+    )
+    return BACK_TO_START
 
 def main() -> None:
     """Run the bot."""
