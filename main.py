@@ -23,24 +23,28 @@ def read_file(file_name: str) -> str:
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     """Starts the conversation and greets the user with a persistent keyboard."""
-    # Define the keyboard layout
-    keyboard = [
-        [InlineKeyboardButton('Harta magazinelor', callback_data='map'),
-         InlineKeyboardButton('Oferta lunii', callback_data='offer')],
-        [InlineKeyboardButton('Contacte', callback_data='contact'),
-         InlineKeyboardButton('Lăsați o recenzie anonimă', callback_data='review')],
-        [InlineKeyboardButton('Rețetă cocktail pe viitor', callback_data='cocktail')]
-    ]
-    reply_markup = InlineKeyboardMarkup(keyboard)
+    # Проверяем, откуда вызвана команда: сообщение или колбэк
+    if update.message:  # Если вызов из сообщения
+        keyboard = [
+            [InlineKeyboardButton('Harta magazinelor', callback_data='map'),
+             InlineKeyboardButton('Oferta lunii', callback_data='offer')],
+            [InlineKeyboardButton('Contacte', callback_data='contact'),
+             InlineKeyboardButton('Lăsați o recenzie anonimă', callback_data='review')],
+            [InlineKeyboardButton('Rețetă cocktail pe viitor', callback_data='cocktail')]
+        ]
+        reply_markup = InlineKeyboardMarkup(keyboard)
 
-    start_text = read_file('start_text.html')
+        start_text = read_file('start_text.html')
 
-    await update.message.reply_photo(
-        photo='https://libercard.md/storage/partner/February2021/78tUbaCsWGg58W9D0L1D.jpg',
-        caption=start_text,
-        parse_mode='HTML',
-        reply_markup=reply_markup
-    )
+        await update.message.reply_photo(
+            photo='https://libercard.md/storage/partner/February2021/78tUbaCsWGg58W9D0L1D.jpg',
+            caption=start_text,
+            parse_mode='HTML',
+            reply_markup=reply_markup
+        )
+    else:  # Если вызов из колбэка
+        await update.callback_query.answer()
+        await handle_back(update, context)
 
     return BACK_TO_START
 
@@ -118,6 +122,7 @@ async def cocktail_recipe(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
 async def handle_back(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     """Handles the back button to return to the start message."""
     await update.callback_query.answer()
+
     keyboard = [
         [InlineKeyboardButton('Harta magazinelor', callback_data='map'),
          InlineKeyboardButton('Oferta lunii', callback_data='offer')],
@@ -126,16 +131,24 @@ async def handle_back(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int
         [InlineKeyboardButton('Rețetă cocktail pe viitor', callback_data='cocktail')]
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
+
     start_text = read_file('start_text.html')
 
-    await update.callback_query.message.edit_media(
-        media=InputMediaPhoto(
-            media='https://libercard.md/storage/partner/February2021/78tUbaCsWGg58W9D0L1D.jpg',
+    # Избегаем дублирования вызова edit_media
+    if update.callback_query.message.photo:
+        await update.callback_query.message.edit_caption(
             caption=start_text,
-            parse_mode='HTML'
-        ),
-        reply_markup=reply_markup
-    )
+            parse_mode='HTML',
+            reply_markup=reply_markup
+        )
+    else:
+        await update.callback_query.message.reply_photo(
+            photo='https://libercard.md/storage/partner/February2021/78tUbaCsWGg58W9D0L1D.jpg',
+            caption=start_text,
+            parse_mode='HTML',
+            reply_markup=reply_markup
+        )
+
     return BACK_TO_START
 
 def main() -> None:
