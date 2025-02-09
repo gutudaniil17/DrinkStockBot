@@ -6,6 +6,31 @@ from telegram.ext import (Application, CallbackQueryHandler, CommandHandler,
                           ContextTypes, ConversationHandler, MessageHandler, filters)
 from telegram import InputMediaPhoto
 
+import gspread
+from oauth2client.service_account import ServiceAccountCredentials
+
+# Authenticate with Google Sheets
+def connect_to_google_sheets(sheet_name):
+    scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
+    creds = ServiceAccountCredentials.from_json_keyfile_name("credentials.json", scope)
+    client = gspread.authorize(creds)
+
+    # Open the Google Sheet by name
+    sheet = client.open(sheet_name).sheet1  # Access the first sheet
+    return sheet
+
+
+def save_user_info(user_id, first_name, last_name, username, language):
+    sheet = connect_to_google_sheets("DrinkStock")
+
+    # Get existing data to find the next empty row, skipping the header row
+    existing_data = sheet.get_all_values()
+    next_row = len(existing_data) + 1  # First row is for headers, so start appending from row 2
+
+    # Append user data at the next available row (below the header)
+    sheet.append_row([user_id, first_name, last_name, username, language], table_range=f"A{next_row}:E{next_row}")
+
+
 # Enable logging
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
                     level=logging.INFO)
@@ -22,7 +47,15 @@ def read_file(file_name: str) -> str:
 
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    """Starts the conversation and greets the user with a persistent keyboard."""
+    """Starts the conversation and logs user info to Google Sheets."""
+    user = update.message.from_user if update.message else update.callback_query.from_user
+
+    # Save user info to Google Sheets
+    save_user_info(user.id, user.first_name, user.last_name or '', user.username or 'N/A', user.language_code)
+
+    logger.info(f"User Info Saved: ID={user.id}, Name={user.first_name} {user.last_name or ''}, "
+                f"Username={user.username or 'N/A'}, Language={user.language_code}")
+
     # Проверяем, откуда вызвана команда: сообщение или колбэк
     if update.message:  # Если вызов из сообщения
         keyboard = [
