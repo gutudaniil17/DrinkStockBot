@@ -8,27 +8,24 @@ from telegram import InputMediaPhoto
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
 
-# Authenticate with Google Sheets
 def connect_to_google_sheets(sheet_name):
     scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
     creds = ServiceAccountCredentials.from_json_keyfile_name("credentials.json", scope)
     client = gspread.authorize(creds)
-    sheet = client.open(sheet_name).sheet1  # Access the first sheet
+    sheet = client.open(sheet_name).sheet1
     return sheet
 
 def save_user_info(user_id, first_name, last_name, username, language):
     sheet = connect_to_google_sheets("DrinkStock")
     existing_data = sheet.get_all_values()
-    next_row = len(existing_data) + 1  # First row is for headers, so start appending from row 2
+    next_row = len(existing_data) + 1
     sheet.append_row([user_id, first_name, last_name, username, language], table_range=f"A{next_row}:E{next_row}")
 
-# Enable logging
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
                     level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# Define states
-CONTACT, BACK_TO_START, MAP, OFFER, REVIEW, COCKTAIL_RECIPE, CHANGE_ADDRESSES, CHANGE_ADMINS, CHANGE_COCKTAIL_RECIPE, CHANGE_CONTACT_INFO, CHANGE_START_MESSAGE = range(11)
+CONTACT, BACK_TO_START, MAP, OFFER, REVIEW, COCKTAIL_RECIPE, CHANGE_ADDRESSES, CHANGE_ADMINS, CHANGE_COCKTAIL_RECIPE, CHANGE_CONTACT_INFO, CHANGE_START_MESSAGE, CHANGE_REVIEW = range(12)
 
 def read_file(file_name: str) -> str:
     with open(file_name, 'r', encoding='utf-8') as file:
@@ -40,7 +37,6 @@ def read_admins(file_path):
     return admins
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    """Starts the conversation and logs user info to Google Sheets."""
     user = update.message.from_user if update.message else update.callback_query.from_user
     save_user_info(user.id, user.first_name, user.last_name or '', user.username or 'N/A', user.language_code)
     logger.info(f"User Info Saved: ID={user.id}, Name={user.first_name} {user.last_name or ''}, "
@@ -60,6 +56,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
         keyboard.append([InlineKeyboardButton('Schimba rețeta cocktailului', callback_data='change_cocktail_recipe')])
         keyboard.append([InlineKeyboardButton('Schimba contactele', callback_data='change_contact_info')])
         keyboard.append([InlineKeyboardButton('Schimba mesaj de start', callback_data='change_start_message')])
+        keyboard.append([InlineKeyboardButton('Schimba recenzia', callback_data='change_review')])
     reply_markup = InlineKeyboardMarkup(keyboard)
     start_text = read_file('start_text.html')
     if update.message:
@@ -75,8 +72,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     return BACK_TO_START
 
 async def change_addresses(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    """Displays the current addresses and prompts the admin to send new data."""
-    await update.callback_query.answer()  # Acknowledge the callback query
+    await update.callback_query.answer()
     current_addresses = read_file('map_locations.html')
     keyboard = [[InlineKeyboardButton("Înapoi", callback_data='back')]]
     reply_markup = InlineKeyboardMarkup(keyboard)
@@ -88,7 +84,6 @@ async def change_addresses(update: Update, context: ContextTypes.DEFAULT_TYPE) -
     return CHANGE_ADDRESSES
 
 async def save_new_addresses(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    """Saves the new addresses to map_locations.html and returns to the start."""
     new_addresses = update.message.text
     url_pattern = re.compile(r'(📍.*?)(https?://\S+)\)')
     new_addresses = url_pattern.sub(r'<a href="\2">\1</a>', new_addresses)
@@ -99,8 +94,7 @@ async def save_new_addresses(update: Update, context: ContextTypes.DEFAULT_TYPE)
     return await start(update, context)
 
 async def change_admins(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    """Displays the current admins and prompts the admin to send new data."""
-    await update.callback_query.answer()  # Acknowledge the callback query
+    await update.callback_query.answer()
     current_admins = read_file('admins.txt')
     keyboard = [[InlineKeyboardButton("Înapoi", callback_data='back')]]
     reply_markup = InlineKeyboardMarkup(keyboard)
@@ -112,7 +106,6 @@ async def change_admins(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
     return CHANGE_ADMINS
 
 async def save_new_admins(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    """Saves the new admin usernames to admins.txt and returns to the start."""
     new_admins = update.message.text
     with open('admins.txt', 'w', encoding='utf-8') as file:
         file.write(new_admins)
@@ -120,8 +113,7 @@ async def save_new_admins(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
     return await start(update, context)
 
 async def change_cocktail_recipe(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    """Displays the current cocktail recipe and prompts the admin to send new data."""
-    await update.callback_query.answer()  # Acknowledge the callback query
+    await update.callback_query.answer()
     current_recipe = read_file('cocktail_recipe.html')
     keyboard = [[InlineKeyboardButton("Înapoi", callback_data='back')]]
     reply_markup = InlineKeyboardMarkup(keyboard)
@@ -133,7 +125,6 @@ async def change_cocktail_recipe(update: Update, context: ContextTypes.DEFAULT_T
     return CHANGE_COCKTAIL_RECIPE
 
 async def save_new_cocktail_recipe(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    """Saves the new cocktail recipe to cocktail_recipe.html and returns to the start."""
     new_recipe = update.message.text
     url_pattern = re.compile(r'(.*?)(https?://\S+)\)')
     new_recipe = url_pattern.sub(r'<a href="\2">\1</a>', new_recipe)
@@ -144,8 +135,7 @@ async def save_new_cocktail_recipe(update: Update, context: ContextTypes.DEFAULT
     return await start(update, context)
 
 async def change_contact_info(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    """Displays the current contact information and prompts the admin to send new data."""
-    await update.callback_query.answer()  # Acknowledge the callback query
+    await update.callback_query.answer()
     current_contact_info = read_file('contact_info.html')
     keyboard = [[InlineKeyboardButton("Înapoi", callback_data='back')]]
     reply_markup = InlineKeyboardMarkup(keyboard)
@@ -157,7 +147,6 @@ async def change_contact_info(update: Update, context: ContextTypes.DEFAULT_TYPE
     return CHANGE_CONTACT_INFO
 
 async def save_new_contact_info(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    """Saves the new contact information to contact_info.html and returns to the start."""
     new_contact_info = update.message.text
     url_pattern = re.compile(r'(.*?)(https?://\S+)\)')
     new_contact_info = url_pattern.sub(r'<a href="\2">\1</a>', new_contact_info)
@@ -168,8 +157,7 @@ async def save_new_contact_info(update: Update, context: ContextTypes.DEFAULT_TY
     return await start(update, context)
 
 async def change_start_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    """Displays the current start message and prompts the admin to send new data."""
-    await update.callback_query.answer()  # Acknowledge the callback query
+    await update.callback_query.answer()
     current_start_message = read_file('start_text.html')
     keyboard = [[InlineKeyboardButton("Înapoi", callback_data='back')]]
     reply_markup = InlineKeyboardMarkup(keyboard)
@@ -181,7 +169,6 @@ async def change_start_message(update: Update, context: ContextTypes.DEFAULT_TYP
     return CHANGE_START_MESSAGE
 
 async def save_new_start_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    """Saves the new start message to start_text.html and returns to the start."""
     new_start_message = update.message.text
     url_pattern = re.compile(r'(.*?)(https?://\S+)\)')
     new_start_message = url_pattern.sub(r'<a href="\2">\1</a>', new_start_message)
@@ -191,9 +178,30 @@ async def save_new_start_message(update: Update, context: ContextTypes.DEFAULT_T
     await update.message.reply_text("Start message updated successfully.")
     return await start(update, context)
 
+async def change_review(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    await update.callback_query.answer()
+    current_review = read_file('review.html')
+    keyboard = [[InlineKeyboardButton("Înapoi", callback_data='back')]]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    await update.callback_query.message.reply_text(
+        "Current review message:\n\n" + current_review + "\n\nPlease send the new review message in HTML format.",
+        parse_mode='HTML',
+        reply_markup=reply_markup
+    )
+    return CHANGE_REVIEW
+
+async def save_new_review(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    new_review = update.message.text
+    url_pattern = re.compile(r'(.*?)(https?://\S+)\)')
+    new_review = url_pattern.sub(r'<a href="\2">\1</a>', new_review)
+    new_review = new_review.replace(' (', '')
+    with open('review.html', 'w', encoding='utf-8') as file:
+        file.write(new_review)
+    await update.message.reply_text("Review message updated successfully.")
+    return await start(update, context)
+
 async def contact(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    """Displays contact information."""
-    await update.callback_query.answer()  # Acknowledge the callback query
+    await update.callback_query.answer()
     contact_info = read_file('contact_info.html')
     keyboard = [[InlineKeyboardButton("Înapoi", callback_data='back')]]
     reply_markup = InlineKeyboardMarkup(keyboard)
@@ -201,8 +209,7 @@ async def contact(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     return BACK_TO_START
 
 async def map_locations(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    """Displays the list of city districts and addresses with Google Maps links."""
-    await update.callback_query.answer()  # Acknowledge the callback query
+    await update.callback_query.answer()
     districts_info = read_file('map_locations.html')
     keyboard = [[InlineKeyboardButton("Înapoi", callback_data='back')]]
     reply_markup = InlineKeyboardMarkup(keyboard)
@@ -210,7 +217,6 @@ async def map_locations(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
     return BACK_TO_START
 
 async def offer(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    """Displays a series of photos for the offer of the month as a single message."""
     offer_photos = read_file('offer_photos.txt').split('\n')
     media = [InputMediaPhoto(photo) for photo in offer_photos]
     await context.bot.send_media_group(chat_id=update.callback_query.from_user.id, media=media)
@@ -221,8 +227,7 @@ async def offer(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     return BACK_TO_START
 
 async def review(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    """Displays the review message with a link to the Google Form."""
-    await update.callback_query.answer()  # Acknowledge the callback query
+    await update.callback_query.answer()
     review_info = read_file('review.html')
     keyboard = [[InlineKeyboardButton("Înapoi", callback_data='back')]]
     reply_markup = InlineKeyboardMarkup(keyboard)
@@ -230,8 +235,7 @@ async def review(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     return BACK_TO_START
 
 async def cocktail_recipe(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    """Displays the cocktail recipe with a link to the YouTube video."""
-    await update.callback_query.answer()  # Acknowledge the callback query
+    await update.callback_query.answer()
     recipe_info = read_file('cocktail_recipe.html')
     keyboard = [[InlineKeyboardButton("Înapoi", callback_data='back')]]
     reply_markup = InlineKeyboardMarkup(keyboard)
@@ -239,7 +243,6 @@ async def cocktail_recipe(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
     return BACK_TO_START
 
 async def handle_back(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    """Handles the back button to return to the start message."""
     await update.callback_query.answer()
     user = update.callback_query.from_user
     admins = read_admins('admins.txt')
@@ -257,6 +260,7 @@ async def handle_back(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int
         keyboard.append([InlineKeyboardButton('Schimba rețeta cocktailului', callback_data='change_cocktail_recipe')])
         keyboard.append([InlineKeyboardButton('Schimba contactele', callback_data='change_contact_info')])
         keyboard.append([InlineKeyboardButton('Schimba mesaj de start', callback_data='change_start_message')])
+        keyboard.append([InlineKeyboardButton('Schimba recenzia', callback_data='change_review')])
     reply_markup = InlineKeyboardMarkup(keyboard)
     start_text = read_file('start_text.html')
     if update.callback_query.message.photo:
@@ -275,7 +279,6 @@ async def handle_back(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int
     return BACK_TO_START
 
 def main() -> None:
-    """Run the bot."""
     API_KEY = read_file('.env')
     application = Application.builder().token(API_KEY).build()
     conv_handler = ConversationHandler(
@@ -292,7 +295,8 @@ def main() -> None:
                 CallbackQueryHandler(change_admins, pattern='change_admins'),
                 CallbackQueryHandler(change_cocktail_recipe, pattern='change_cocktail_recipe'),
                 CallbackQueryHandler(change_contact_info, pattern='change_contact_info'),
-                CallbackQueryHandler(change_start_message, pattern='change_start_message')
+                CallbackQueryHandler(change_start_message, pattern='change_start_message'),
+                CallbackQueryHandler(change_review, pattern='change_review')
             ],
             CONTACT: [CallbackQueryHandler(handle_back, pattern='back')],
             MAP: [CallbackQueryHandler(handle_back, pattern='back')],
@@ -317,6 +321,10 @@ def main() -> None:
             ],
             CHANGE_START_MESSAGE: [
                 MessageHandler(filters.TEXT & ~filters.COMMAND, save_new_start_message),
+                CallbackQueryHandler(handle_back, pattern='back')
+            ],
+            CHANGE_REVIEW: [
+                MessageHandler(filters.TEXT & ~filters.COMMAND, save_new_review),
                 CallbackQueryHandler(handle_back, pattern='back')
             ]
         },
