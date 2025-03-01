@@ -1,4 +1,5 @@
 import logging
+import os
 import re
 from telegram import (ReplyKeyboardMarkup, ReplyKeyboardRemove, Update,
                       InlineKeyboardButton, InlineKeyboardMarkup)
@@ -148,13 +149,13 @@ async def map_locations(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
     return BACK_TO_START
 
 async def offer(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    offer_photos = read_file('offer_photos.txt').split('\n')
-    media = [InputMediaPhoto(photo) for photo in offer_photos]
+    offer_photos_dir = 'offers'
+    offer_photos = [os.path.join(offer_photos_dir, file) for file in os.listdir(offer_photos_dir) if file.endswith(('jpg', 'jpeg', 'png'))]
+    media = [InputMediaPhoto(open(photo, 'rb')) for photo in offer_photos]
     await context.bot.send_media_group(chat_id=update.callback_query.from_user.id, media=media)
     keyboard = [[InlineKeyboardButton("Înapoi", callback_data='back')]]
     reply_markup = InlineKeyboardMarkup(keyboard)
-    await update.callback_query.message.reply_text("Acestea sunt ofertele lunii! Apasă 'Înapoi' pentru a reveni.",
-                                                   reply_markup=reply_markup)
+    await update.callback_query.message.reply_text("Acestea sunt ofertele lunii! Apasă 'Înapoi' pentru a reveni.", reply_markup=reply_markup)
     return BACK_TO_START
 
 async def review(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
