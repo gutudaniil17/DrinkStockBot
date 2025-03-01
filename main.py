@@ -28,7 +28,7 @@ logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s
 logger = logging.getLogger(__name__)
 
 # Define states
-CONTACT, BACK_TO_START, MAP, OFFER, REVIEW, COCKTAIL_RECIPE, CHANGE_ADDRESSES, CHANGE_ADMINS, CHANGE_COCKTAIL_RECIPE, CHANGE_CONTACT_INFO = range(10)
+CONTACT, BACK_TO_START, MAP, OFFER, REVIEW, COCKTAIL_RECIPE, CHANGE_ADDRESSES, CHANGE_ADMINS, CHANGE_COCKTAIL_RECIPE, CHANGE_CONTACT_INFO, CHANGE_START_MESSAGE = range(11)
 
 def read_file(file_name: str) -> str:
     with open(file_name, 'r', encoding='utf-8') as file:
@@ -59,6 +59,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
         keyboard.append([InlineKeyboardButton('Modifica administratori', callback_data='change_admins')])
         keyboard.append([InlineKeyboardButton('Schimba rețeta cocktailului', callback_data='change_cocktail_recipe')])
         keyboard.append([InlineKeyboardButton('Schimba contactele', callback_data='change_contact_info')])
+        keyboard.append([InlineKeyboardButton('Schimba mesaj de start', callback_data='change_start_message')])
     reply_markup = InlineKeyboardMarkup(keyboard)
     start_text = read_file('start_text.html')
     if update.message:
@@ -166,6 +167,30 @@ async def save_new_contact_info(update: Update, context: ContextTypes.DEFAULT_TY
     await update.message.reply_text("Contact information updated successfully.")
     return await start(update, context)
 
+async def change_start_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    """Displays the current start message and prompts the admin to send new data."""
+    await update.callback_query.answer()  # Acknowledge the callback query
+    current_start_message = read_file('start_text.html')
+    keyboard = [[InlineKeyboardButton("Înapoi", callback_data='back')]]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    await update.callback_query.message.reply_text(
+        "Current start message:\n\n" + current_start_message + "\n\nPlease send the new start message in HTML format.",
+        parse_mode='HTML',
+        reply_markup=reply_markup
+    )
+    return CHANGE_START_MESSAGE
+
+async def save_new_start_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    """Saves the new start message to start_text.html and returns to the start."""
+    new_start_message = update.message.text
+    url_pattern = re.compile(r'(.*?)(https?://\S+)\)')
+    new_start_message = url_pattern.sub(r'<a href="\2">\1</a>', new_start_message)
+    new_start_message = new_start_message.replace(' (', '')
+    with open('start_text.html', 'w', encoding='utf-8') as file:
+        file.write(new_start_message)
+    await update.message.reply_text("Start message updated successfully.")
+    return await start(update, context)
+
 async def contact(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     """Displays contact information."""
     await update.callback_query.answer()  # Acknowledge the callback query
@@ -231,6 +256,7 @@ async def handle_back(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int
         keyboard.append([InlineKeyboardButton('Modifica administratori', callback_data='change_admins')])
         keyboard.append([InlineKeyboardButton('Schimba rețeta cocktailului', callback_data='change_cocktail_recipe')])
         keyboard.append([InlineKeyboardButton('Schimba contactele', callback_data='change_contact_info')])
+        keyboard.append([InlineKeyboardButton('Schimba mesaj de start', callback_data='change_start_message')])
     reply_markup = InlineKeyboardMarkup(keyboard)
     start_text = read_file('start_text.html')
     if update.callback_query.message.photo:
@@ -265,7 +291,8 @@ def main() -> None:
                 CallbackQueryHandler(change_addresses, pattern='change_addresses'),
                 CallbackQueryHandler(change_admins, pattern='change_admins'),
                 CallbackQueryHandler(change_cocktail_recipe, pattern='change_cocktail_recipe'),
-                CallbackQueryHandler(change_contact_info, pattern='change_contact_info')
+                CallbackQueryHandler(change_contact_info, pattern='change_contact_info'),
+                CallbackQueryHandler(change_start_message, pattern='change_start_message')
             ],
             CONTACT: [CallbackQueryHandler(handle_back, pattern='back')],
             MAP: [CallbackQueryHandler(handle_back, pattern='back')],
@@ -286,6 +313,10 @@ def main() -> None:
             ],
             CHANGE_CONTACT_INFO: [
                 MessageHandler(filters.TEXT & ~filters.COMMAND, save_new_contact_info),
+                CallbackQueryHandler(handle_back, pattern='back')
+            ],
+            CHANGE_START_MESSAGE: [
+                MessageHandler(filters.TEXT & ~filters.COMMAND, save_new_start_message),
                 CallbackQueryHandler(handle_back, pattern='back')
             ]
         },
