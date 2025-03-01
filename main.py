@@ -1,11 +1,12 @@
 import logging
 import os
 import re
+from telegram import Update
+from telegram.ext import ContextTypes
 from telegram import (ReplyKeyboardMarkup, ReplyKeyboardRemove, Update,
-                      InlineKeyboardButton, InlineKeyboardMarkup)
+                      InlineKeyboardButton, InlineKeyboardMarkup, InputMediaPhoto)
 from telegram.ext import (Application, CallbackQueryHandler, CommandHandler,
                           ContextTypes, ConversationHandler, MessageHandler, filters)
-from telegram import InputMediaPhoto
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
 
@@ -26,7 +27,7 @@ logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s
                     level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-CONTACT, BACK_TO_START, MAP, OFFER, REVIEW, COCKTAIL_RECIPE, CHANGE_ADDRESSES, CHANGE_ADMINS, CHANGE_COCKTAIL_RECIPE, CHANGE_CONTACT_INFO, CHANGE_START_MESSAGE, CHANGE_REVIEW = range(12)
+CONTACT, BACK_TO_START, MAP, OFFER, REVIEW, COCKTAIL_RECIPE, CHANGE_ADDRESSES, CHANGE_ADMINS, CHANGE_COCKTAIL_RECIPE, CHANGE_CONTACT_INFO, CHANGE_START_MESSAGE, CHANGE_REVIEW, CHANGE_OFFERS = range(13)
 
 def read_file(file_name: str) -> str:
     with open(file_name, 'r', encoding='utf-8') as file:
@@ -43,7 +44,8 @@ def save_new_content(file_path: str, content: str):
     with open(file_path, 'w', encoding='utf-8') as file:
         file.write(content)
 
-async def handle_change(update: Update, context: ContextTypes.DEFAULT_TYPE, file_path: str, prompt: str, next_state: int) -> int:
+async def handle_change(update: Update, context: ContextTypes.DEFAULT_TYPE, file_path: str, prompt: str,
+                        next_state: int) -> int:
     await update.callback_query.answer()
     current_content = read_file(file_path)
     keyboard = [[InlineKeyboardButton("Înapoi", callback_data='back')]]
@@ -82,6 +84,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
         keyboard.append([InlineKeyboardButton('Schimba contactele', callback_data='change_contact_info')])
         keyboard.append([InlineKeyboardButton('Schimba mesaj de start', callback_data='change_start_message')])
         keyboard.append([InlineKeyboardButton('Schimba recenzia', callback_data='change_review')])
+        keyboard.append([InlineKeyboardButton('Schimba ofertele', callback_data='change_offers')])
     reply_markup = InlineKeyboardMarkup(keyboard)
     start_text = read_file('start_text.html')
     if update.message:
@@ -97,37 +100,43 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     return BACK_TO_START
 
 async def change_addresses(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    return await handle_change(update, context, 'map_locations.html', "Please send the new addresses.", CHANGE_ADDRESSES)
+    return await handle_change(update, context, 'map_locations.html', "Please send the new addresses.",
+                               CHANGE_ADDRESSES)
 
 async def save_new_addresses(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     return await handle_save(update, context, 'map_locations.html')
 
 async def change_admins(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    return await handle_change(update, context, 'admins.txt', "Please send the new admin usernames, one per line.", CHANGE_ADMINS)
+    return await handle_change(update, context, 'admins.txt', "Please send the new admin usernames, one per line.",
+                               CHANGE_ADMINS)
 
 async def save_new_admins(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     return await handle_save(update, context, 'admins.txt')
 
 async def change_cocktail_recipe(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    return await handle_change(update, context, 'cocktail_recipe.html', "Please send the new cocktail recipe in HTML format.", CHANGE_COCKTAIL_RECIPE)
+    return await handle_change(update, context, 'cocktail_recipe.html',
+                               "Please send the new cocktail recipe in HTML format.", CHANGE_COCKTAIL_RECIPE)
 
 async def save_new_cocktail_recipe(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     return await handle_save(update, context, 'cocktail_recipe.html')
 
 async def change_contact_info(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    return await handle_change(update, context, 'contact_info.html', "Please send the new contact information in HTML format.", CHANGE_CONTACT_INFO)
+    return await handle_change(update, context, 'contact_info.html',
+                               "Please send the new contact information in HTML format.", CHANGE_CONTACT_INFO)
 
 async def save_new_contact_info(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     return await handle_save(update, context, 'contact_info.html')
 
 async def change_start_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    return await handle_change(update, context, 'start_text.html', "Please send the new start message in HTML format.", CHANGE_START_MESSAGE)
+    return await handle_change(update, context, 'start_text.html', "Please send the new start message in HTML format.",
+                               CHANGE_START_MESSAGE)
 
 async def save_new_start_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     return await handle_save(update, context, 'start_text.html')
 
 async def change_review(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    return await handle_change(update, context, 'review.html', "Please send the new review message in HTML format.", CHANGE_REVIEW)
+    return await handle_change(update, context, 'review.html', "Please send the new review message in HTML format.",
+                               CHANGE_REVIEW)
 
 async def save_new_review(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     return await handle_save(update, context, 'review.html')
@@ -150,13 +159,66 @@ async def map_locations(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
 
 async def offer(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     offer_photos_dir = 'offers'
-    offer_photos = [os.path.join(offer_photos_dir, file) for file in os.listdir(offer_photos_dir) if file.endswith(('jpg', 'jpeg', 'png'))]
+    offer_photos = [os.path.join(offer_photos_dir, file) for file in os.listdir(offer_photos_dir) if
+                    file.endswith(('jpg', 'jpeg', 'png'))]
     media = [InputMediaPhoto(open(photo, 'rb')) for photo in offer_photos]
     await context.bot.send_media_group(chat_id=update.callback_query.from_user.id, media=media)
     keyboard = [[InlineKeyboardButton("Înapoi", callback_data='back')]]
     reply_markup = InlineKeyboardMarkup(keyboard)
-    await update.callback_query.message.reply_text("Acestea sunt ofertele lunii! Apasă 'Înapoi' pentru a reveni.", reply_markup=reply_markup)
+    await update.callback_query.message.reply_text("Acestea sunt ofertele lunii! Apasă 'Înapoi' pentru a reveni.",
+                                                   reply_markup=reply_markup)
     return BACK_TO_START
+
+async def change_offers(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    await update.callback_query.answer()
+    keyboard = [[InlineKeyboardButton("Înapoi", callback_data='back')]]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    await update.callback_query.message.reply_text(
+        "Please send the new offer photos. All existing photos will be deleted.",
+        reply_markup=reply_markup
+    )
+    return CHANGE_OFFERS
+
+
+async def save_new_offers(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    offer_photos_dir = 'offers'
+
+    # First photo in the group: clear the directory
+    if update.message.media_group_id:
+        if update.message.media_group_id not in context.bot_data:
+            # Ensure the directory exists
+            if not os.path.exists(offer_photos_dir):
+                os.makedirs(offer_photos_dir)
+
+            # Delete old photos
+            for file in os.listdir(offer_photos_dir):
+                file_path = os.path.join(offer_photos_dir, file)
+                if os.path.isfile(file_path):
+                    os.unlink(file_path)
+
+            # Initialize the media group storage
+            context.bot_data[update.message.media_group_id] = []
+
+        # Store the photo in bot_data
+        context.bot_data[update.message.media_group_id].append(update.message)
+
+        # Get all photos after short delay to ensure we have received them all
+        if len(context.bot_data[update.message.media_group_id]) == 2:  # Assuming 2 photos
+            # Save all photos
+            for message in context.bot_data[update.message.media_group_id]:
+                if message.photo:
+                    highest_quality_photo = message.photo[-1]
+                    file_id = highest_quality_photo.file_id
+                    new_file = await context.bot.get_file(file_id)
+                    new_file_path = os.path.join(offer_photos_dir, f"{file_id}.jpg")
+                    await new_file.download_to_drive(new_file_path)
+
+            # Clean up
+            del context.bot_data[update.message.media_group_id]
+            await update.message.reply_text("New offer photos have been updated successfully.")
+            return await start(update, context)
+
+    return CHANGE_OFFERS  # Stay in the same st
 
 async def review(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     await update.callback_query.answer()
@@ -193,6 +255,7 @@ async def handle_back(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int
         keyboard.append([InlineKeyboardButton('Schimba contactele', callback_data='change_contact_info')])
         keyboard.append([InlineKeyboardButton('Schimba mesaj de start', callback_data='change_start_message')])
         keyboard.append([InlineKeyboardButton('Schimba recenzia', callback_data='change_review')])
+        keyboard.append([InlineKeyboardButton('Schimba ofertele', callback_data='change_offers')])
     reply_markup = InlineKeyboardMarkup(keyboard)
     start_text = read_file('start_text.html')
     if update.callback_query.message.photo:
@@ -228,7 +291,8 @@ def main() -> None:
                 CallbackQueryHandler(change_cocktail_recipe, pattern='change_cocktail_recipe'),
                 CallbackQueryHandler(change_contact_info, pattern='change_contact_info'),
                 CallbackQueryHandler(change_start_message, pattern='change_start_message'),
-                CallbackQueryHandler(change_review, pattern='change_review')
+                CallbackQueryHandler(change_review, pattern='change_review'),
+                CallbackQueryHandler(change_offers, pattern='change_offers')
             ],
             CONTACT: [CallbackQueryHandler(handle_back, pattern='back')],
             MAP: [CallbackQueryHandler(handle_back, pattern='back')],
@@ -257,6 +321,10 @@ def main() -> None:
             ],
             CHANGE_REVIEW: [
                 MessageHandler(filters.TEXT & ~filters.COMMAND, save_new_review),
+                CallbackQueryHandler(handle_back, pattern='back')
+            ],
+            CHANGE_OFFERS: [
+                MessageHandler(filters.PHOTO, save_new_offers),
                 CallbackQueryHandler(handle_back, pattern='back')
             ]
         },
