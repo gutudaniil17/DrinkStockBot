@@ -31,17 +31,41 @@ def read_file(file_name: str) -> str:
     with open(file_name, 'r', encoding='utf-8') as file:
         return file.read()
 
-def read_admins(file_path):
+def read_file_lines(file_path):
     with open(file_path, 'r') as file:
-        admins = [line.strip() for line in file if line.strip()]
-    return admins
+        return [line.strip() for line in file if line.strip()]
+
+def save_new_content(file_path: str, content: str):
+    url_pattern = re.compile(r'(.*?)(https?://\S+)\)')
+    content = url_pattern.sub(r'<a href="\2">\1</a>', content)
+    content = content.replace(' (', '')
+    with open(file_path, 'w', encoding='utf-8') as file:
+        file.write(content)
+
+async def handle_change(update: Update, context: ContextTypes.DEFAULT_TYPE, file_path: str, prompt: str, next_state: int) -> int:
+    await update.callback_query.answer()
+    current_content = read_file(file_path)
+    keyboard = [[InlineKeyboardButton("Înapoi", callback_data='back')]]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    await update.callback_query.message.reply_text(
+        f"Current content:\n\n{current_content}\n\n{prompt}",
+        parse_mode='HTML',
+        reply_markup=reply_markup
+    )
+    return next_state
+
+async def handle_save(update: Update, context: ContextTypes.DEFAULT_TYPE, file_path: str) -> int:
+    new_content = update.message.text
+    save_new_content(file_path, new_content)
+    await update.message.reply_text("Content updated successfully.")
+    return await start(update, context)
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     user = update.message.from_user if update.message else update.callback_query.from_user
     save_user_info(user.id, user.first_name, user.last_name or '', user.username or 'N/A', user.language_code)
     logger.info(f"User Info Saved: ID={user.id}, Name={user.first_name} {user.last_name or ''}, "
                 f"Username={user.username or 'N/A'}, Language={user.language_code}")
-    admins = read_admins('admins.txt')
+    admins = read_file_lines('admins.txt')
     is_admin = user.username in admins
     keyboard = [
         [InlineKeyboardButton('Harta magazinelor', callback_data='map'),
@@ -72,133 +96,40 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     return BACK_TO_START
 
 async def change_addresses(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    await update.callback_query.answer()
-    current_addresses = read_file('map_locations.html')
-    keyboard = [[InlineKeyboardButton("Înapoi", callback_data='back')]]
-    reply_markup = InlineKeyboardMarkup(keyboard)
-    await update.callback_query.message.reply_text(
-        "Current addresses:\n\n" + current_addresses + "\n\nPlease send the new addresses.",
-        parse_mode='HTML',
-        reply_markup=reply_markup
-    )
-    return CHANGE_ADDRESSES
+    return await handle_change(update, context, 'map_locations.html', "Please send the new addresses.", CHANGE_ADDRESSES)
 
 async def save_new_addresses(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    new_addresses = update.message.text
-    url_pattern = re.compile(r'(📍.*?)(https?://\S+)\)')
-    new_addresses = url_pattern.sub(r'<a href="\2">\1</a>', new_addresses)
-    new_addresses = new_addresses.replace(' (', '')
-    with open('map_locations.html', 'w', encoding='utf-8') as file:
-        file.write(new_addresses)
-    await update.message.reply_text("Addresses updated successfully.")
-    return await start(update, context)
+    return await handle_save(update, context, 'map_locations.html')
 
 async def change_admins(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    await update.callback_query.answer()
-    current_admins = read_file('admins.txt')
-    keyboard = [[InlineKeyboardButton("Înapoi", callback_data='back')]]
-    reply_markup = InlineKeyboardMarkup(keyboard)
-    await update.callback_query.message.reply_text(
-        "Current admins:\n\n" + current_admins + "\n\nPlease send the new admin usernames, one per line.",
-        parse_mode='HTML',
-        reply_markup=reply_markup
-    )
-    return CHANGE_ADMINS
+    return await handle_change(update, context, 'admins.txt', "Please send the new admin usernames, one per line.", CHANGE_ADMINS)
 
 async def save_new_admins(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    new_admins = update.message.text
-    with open('admins.txt', 'w', encoding='utf-8') as file:
-        file.write(new_admins)
-    await update.message.reply_text("Admins updated successfully.")
-    return await start(update, context)
+    return await handle_save(update, context, 'admins.txt')
 
 async def change_cocktail_recipe(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    await update.callback_query.answer()
-    current_recipe = read_file('cocktail_recipe.html')
-    keyboard = [[InlineKeyboardButton("Înapoi", callback_data='back')]]
-    reply_markup = InlineKeyboardMarkup(keyboard)
-    await update.callback_query.message.reply_text(
-        "Current cocktail recipe:\n\n" + current_recipe + "\n\nPlease send the new cocktail recipe in HTML format.",
-        parse_mode='HTML',
-        reply_markup=reply_markup
-    )
-    return CHANGE_COCKTAIL_RECIPE
+    return await handle_change(update, context, 'cocktail_recipe.html', "Please send the new cocktail recipe in HTML format.", CHANGE_COCKTAIL_RECIPE)
 
 async def save_new_cocktail_recipe(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    new_recipe = update.message.text
-    url_pattern = re.compile(r'(.*?)(https?://\S+)\)')
-    new_recipe = url_pattern.sub(r'<a href="\2">\1</a>', new_recipe)
-    new_recipe = new_recipe.replace(' (', '')
-    with open('cocktail_recipe.html', 'w', encoding='utf-8') as file:
-        file.write(new_recipe)
-    await update.message.reply_text("Cocktail recipe updated successfully.")
-    return await start(update, context)
+    return await handle_save(update, context, 'cocktail_recipe.html')
 
 async def change_contact_info(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    await update.callback_query.answer()
-    current_contact_info = read_file('contact_info.html')
-    keyboard = [[InlineKeyboardButton("Înapoi", callback_data='back')]]
-    reply_markup = InlineKeyboardMarkup(keyboard)
-    await update.callback_query.message.reply_text(
-        "Current contact information:\n\n" + current_contact_info + "\n\nPlease send the new contact information in HTML format.",
-        parse_mode='HTML',
-        reply_markup=reply_markup
-    )
-    return CHANGE_CONTACT_INFO
+    return await handle_change(update, context, 'contact_info.html', "Please send the new contact information in HTML format.", CHANGE_CONTACT_INFO)
 
 async def save_new_contact_info(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    new_contact_info = update.message.text
-    url_pattern = re.compile(r'(.*?)(https?://\S+)\)')
-    new_contact_info = url_pattern.sub(r'<a href="\2">\1</a>', new_contact_info)
-    new_contact_info = new_contact_info.replace(' (', '')
-    with open('contact_info.html', 'w', encoding='utf-8') as file:
-        file.write(new_contact_info)
-    await update.message.reply_text("Contact information updated successfully.")
-    return await start(update, context)
+    return await handle_save(update, context, 'contact_info.html')
 
 async def change_start_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    await update.callback_query.answer()
-    current_start_message = read_file('start_text.html')
-    keyboard = [[InlineKeyboardButton("Înapoi", callback_data='back')]]
-    reply_markup = InlineKeyboardMarkup(keyboard)
-    await update.callback_query.message.reply_text(
-        "Current start message:\n\n" + current_start_message + "\n\nPlease send the new start message in HTML format.",
-        parse_mode='HTML',
-        reply_markup=reply_markup
-    )
-    return CHANGE_START_MESSAGE
+    return await handle_change(update, context, 'start_text.html', "Please send the new start message in HTML format.", CHANGE_START_MESSAGE)
 
 async def save_new_start_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    new_start_message = update.message.text
-    url_pattern = re.compile(r'(.*?)(https?://\S+)\)')
-    new_start_message = url_pattern.sub(r'<a href="\2">\1</a>', new_start_message)
-    new_start_message = new_start_message.replace(' (', '')
-    with open('start_text.html', 'w', encoding='utf-8') as file:
-        file.write(new_start_message)
-    await update.message.reply_text("Start message updated successfully.")
-    return await start(update, context)
+    return await handle_save(update, context, 'start_text.html')
 
 async def change_review(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    await update.callback_query.answer()
-    current_review = read_file('review.html')
-    keyboard = [[InlineKeyboardButton("Înapoi", callback_data='back')]]
-    reply_markup = InlineKeyboardMarkup(keyboard)
-    await update.callback_query.message.reply_text(
-        "Current review message:\n\n" + current_review + "\n\nPlease send the new review message in HTML format.",
-        parse_mode='HTML',
-        reply_markup=reply_markup
-    )
-    return CHANGE_REVIEW
+    return await handle_change(update, context, 'review.html', "Please send the new review message in HTML format.", CHANGE_REVIEW)
 
 async def save_new_review(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    new_review = update.message.text
-    url_pattern = re.compile(r'(.*?)(https?://\S+)\)')
-    new_review = url_pattern.sub(r'<a href="\2">\1</a>', new_review)
-    new_review = new_review.replace(' (', '')
-    with open('review.html', 'w', encoding='utf-8') as file:
-        file.write(new_review)
-    await update.message.reply_text("Review message updated successfully.")
-    return await start(update, context)
+    return await handle_save(update, context, 'review.html')
 
 async def contact(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     await update.callback_query.answer()
@@ -245,7 +176,7 @@ async def cocktail_recipe(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
 async def handle_back(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     await update.callback_query.answer()
     user = update.callback_query.from_user
-    admins = read_admins('admins.txt')
+    admins = read_file_lines('admins.txt')
     is_admin = user.username in admins
     keyboard = [
         [InlineKeyboardButton('Harta magazinelor', callback_data='map'),
