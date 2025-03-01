@@ -28,7 +28,7 @@ logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s
 logger = logging.getLogger(__name__)
 
 # Define states
-CONTACT, BACK_TO_START, MAP, OFFER, REVIEW, COCKTAIL_RECIPE, CHANGE_ADDRESSES, CHANGE_ADMINS = range(8)
+CONTACT, BACK_TO_START, MAP, OFFER, REVIEW, COCKTAIL_RECIPE, CHANGE_ADDRESSES, CHANGE_ADMINS, CHANGE_COCKTAIL_RECIPE = range(9)
 
 def read_file(file_name: str) -> str:
     with open(file_name, 'r', encoding='utf-8') as file:
@@ -55,8 +55,9 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
          InlineKeyboardButton('Rețetă cocktail pe viitor', callback_data='cocktail')],
     ]
     if is_admin:
-        keyboard.append([InlineKeyboardButton('Change the addresses', callback_data='change_addresses')])
+        keyboard.append([InlineKeyboardButton('Schimba adresele', callback_data='change_addresses')])
         keyboard.append([InlineKeyboardButton('Modifica administratori', callback_data='change_admins')])
+        keyboard.append([InlineKeyboardButton('Schimba rețeta cocktailului', callback_data='change_cocktail_recipe')])
     reply_markup = InlineKeyboardMarkup(keyboard)
     start_text = read_file('start_text.html')
     if update.message:
@@ -114,6 +115,30 @@ async def save_new_admins(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
     with open('admins.txt', 'w', encoding='utf-8') as file:
         file.write(new_admins)
     await update.message.reply_text("Admins updated successfully.")
+    return await start(update, context)
+
+async def change_cocktail_recipe(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    """Displays the current cocktail recipe and prompts the admin to send new data."""
+    await update.callback_query.answer()  # Acknowledge the callback query
+    current_recipe = read_file('cocktail_recipe.html')
+    keyboard = [[InlineKeyboardButton("Înapoi", callback_data='back')]]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    await update.callback_query.message.reply_text(
+        "Current cocktail recipe:\n\n" + current_recipe + "\n\nPlease send the new cocktail recipe in HTML format.",
+        parse_mode='HTML',
+        reply_markup=reply_markup
+    )
+    return CHANGE_COCKTAIL_RECIPE
+
+async def save_new_cocktail_recipe(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    """Saves the new cocktail recipe to cocktail_recipe.html and returns to the start."""
+    new_recipe = update.message.text
+    url_pattern = re.compile(r'(.*?)(https?://\S+)\)')
+    new_recipe = url_pattern.sub(r'<a href="\2">\1</a>', new_recipe)
+    new_recipe = new_recipe.replace(' (', '')
+    with open('cocktail_recipe.html', 'w', encoding='utf-8') as file:
+        file.write(new_recipe)
+    await update.message.reply_text("Cocktail recipe updated successfully.")
     return await start(update, context)
 
 async def contact(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
@@ -177,8 +202,9 @@ async def handle_back(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int
          InlineKeyboardButton('Rețetă cocktail pe viitor', callback_data='cocktail')],
     ]
     if is_admin:
-        keyboard.append([InlineKeyboardButton('Change the addresses', callback_data='change_addresses')])
+        keyboard.append([InlineKeyboardButton('Schimba adresele', callback_data='change_addresses')])
         keyboard.append([InlineKeyboardButton('Modifica administratori', callback_data='change_admins')])
+        keyboard.append([InlineKeyboardButton('Schimba rețeta cocktailului', callback_data='change_cocktail_recipe')])
     reply_markup = InlineKeyboardMarkup(keyboard)
     start_text = read_file('start_text.html')
     if update.callback_query.message.photo:
@@ -211,7 +237,8 @@ def main() -> None:
                 CallbackQueryHandler(handle_back, pattern='back'),
                 CallbackQueryHandler(cocktail_recipe, pattern='cocktail'),
                 CallbackQueryHandler(change_addresses, pattern='change_addresses'),
-                CallbackQueryHandler(change_admins, pattern='change_admins')
+                CallbackQueryHandler(change_admins, pattern='change_admins'),
+                CallbackQueryHandler(change_cocktail_recipe, pattern='change_cocktail_recipe')
             ],
             CONTACT: [CallbackQueryHandler(handle_back, pattern='back')],
             MAP: [CallbackQueryHandler(handle_back, pattern='back')],
@@ -224,6 +251,10 @@ def main() -> None:
             ],
             CHANGE_ADMINS: [
                 MessageHandler(filters.TEXT & ~filters.COMMAND, save_new_admins),
+                CallbackQueryHandler(handle_back, pattern='back')
+            ],
+            CHANGE_COCKTAIL_RECIPE: [
+                MessageHandler(filters.TEXT & ~filters.COMMAND, save_new_cocktail_recipe),
                 CallbackQueryHandler(handle_back, pattern='back')
             ]
         },
