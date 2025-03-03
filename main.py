@@ -3,6 +3,7 @@ import os
 import re
 from telegram import Update
 from telegram.ext import ContextTypes
+from telegram.ext import PicklePersistence
 from telegram import (ReplyKeyboardMarkup, ReplyKeyboardRemove, Update,
                       InlineKeyboardButton, InlineKeyboardMarkup, InputMediaPhoto)
 from telegram.ext import (Application, CallbackQueryHandler, CommandHandler,
@@ -273,11 +274,41 @@ async def handle_back(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int
         )
     return BACK_TO_START
 
+
 def main() -> None:
     API_KEY = read_file('.env')
-    application = Application.builder().token(API_KEY).build()
+
+    # Delete the corrupted persistence file if it exists
+    if os.path.exists("conversation_states.pkl"):
+        os.remove("conversation_states.pkl")
+
+    # Create persistence object with correct store_data configuration
+    persistence = PicklePersistence(
+        filepath="conversation_states.pkl",
+        store_data=None  # Use default settings
+    )
+
+    # Build application with persistence
+    application = Application.builder().token(API_KEY).persistence(persistence).build()
+
+    # Define the conversation handler with states and fallbacks
     conv_handler = ConversationHandler(
-        entry_points=[CommandHandler('start', start)],
+        entry_points=[
+            CommandHandler('start', start),
+            CallbackQueryHandler(contact, pattern='contact'),
+            CallbackQueryHandler(map_locations, pattern='map'),
+            CallbackQueryHandler(offer, pattern='offer'),
+            CallbackQueryHandler(review, pattern='review'),
+            CallbackQueryHandler(handle_back, pattern='back'),
+            CallbackQueryHandler(cocktail_recipe, pattern='cocktail'),
+            CallbackQueryHandler(change_addresses, pattern='change_addresses'),
+            CallbackQueryHandler(change_admins, pattern='change_admins'),
+            CallbackQueryHandler(change_cocktail_recipe, pattern='change_cocktail_recipe'),
+            CallbackQueryHandler(change_contact_info, pattern='change_contact_info'),
+            CallbackQueryHandler(change_start_message, pattern='change_start_message'),
+            CallbackQueryHandler(change_review, pattern='change_review'),
+            CallbackQueryHandler(change_offers, pattern='change_offers')
+        ],
         states={
             BACK_TO_START: [
                 CallbackQueryHandler(contact, pattern='contact'),
@@ -328,11 +359,26 @@ def main() -> None:
                 CallbackQueryHandler(handle_back, pattern='back')
             ]
         },
-        fallbacks=[CommandHandler('cancel', lambda update, context: update.message.reply_text('Conversation cancelled.',
-                                                                                              reply_markup=ReplyKeyboardRemove()))],
+        fallbacks=[
+            CommandHandler('start', start),
+            CommandHandler('cancel', lambda update, context: update.message.reply_text(
+                'Conversation cancelled.',
+                reply_markup=ReplyKeyboardRemove()
+            ))
+        ],
+        name="drink_stock_conversation",
+        persistent=True,
+        allow_reentry=True
     )
+
+    # Add handlers
     application.add_handler(conv_handler)
-    application.run_polling()
+
+    # Start the bot
+    application.run_polling(allowed_updates=Update.ALL_TYPES)
+
+if __name__ == '__main__':
+    main()
 
 if __name__ == '__main__':
     main()
