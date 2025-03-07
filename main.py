@@ -383,11 +383,11 @@ def main() -> None:
 
     # Add handlers
     application.add_handler(conv_handler)
+    Thread(target=run_flask()).start()
 
     # Start the bot
     application.run_polling(allowed_updates=Update.ALL_TYPES)
 
-    Thread(target=run_flask()).start()
 
 if __name__ == '__main__':
     main()
