@@ -10,6 +10,16 @@ from telegram.ext import (Application, CallbackQueryHandler, CommandHandler,
                           ContextTypes, ConversationHandler, MessageHandler, filters)
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
+from flask import Flask
+from threading import Thread
+
+app = Flask(__name__)
+
+@app.route('/')
+def home():
+    return "DrinkStockBot is running!"
+def run_flask():
+    app.run(host='0.0.0.0', port=5000)
 
 def connect_to_google_sheets(sheet_name):
     scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
@@ -377,8 +387,7 @@ def main() -> None:
     # Start the bot
     application.run_polling(allowed_updates=Update.ALL_TYPES)
 
-if __name__ == '__main__':
-    main()
+    Thread(target=run_flask()).start()
 
 if __name__ == '__main__':
     main()
