@@ -1,15 +1,15 @@
 import logging
 import os
 import re
-from telegram import Update
-from telegram.ext import ContextTypes
-from telegram.ext import PicklePersistence
-from telegram import (ReplyKeyboardMarkup, ReplyKeyboardRemove, Update,
+
+import gspread
+from oauth2client.service_account import ServiceAccountCredentials
+from telegram import (ReplyKeyboardRemove, Update,
                       InlineKeyboardButton, InlineKeyboardMarkup, InputMediaPhoto)
 from telegram.ext import (Application, CallbackQueryHandler, CommandHandler,
                           ContextTypes, ConversationHandler, MessageHandler, filters)
-import gspread
-from oauth2client.service_account import ServiceAccountCredentials
+from telegram.ext import PicklePersistence
+
 
 def connect_to_google_sheets(sheet_name):
     scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
@@ -376,9 +376,6 @@ def main() -> None:
 
     # Start the bot
     application.run_polling(allowed_updates=Update.ALL_TYPES)
-
-if __name__ == '__main__':
-    main()
 
 if __name__ == '__main__':
     main()
