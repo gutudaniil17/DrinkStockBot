@@ -90,7 +90,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     start_text = read_file('start_text.html')
     if update.message:
         await update.message.reply_photo(
-            photo='https://libercard.md/storage/partner/February2021/78tUbaCsWGg58W9D0L1D.jpg',
+            photo=open('logo.jpg', 'rb'),
             caption=start_text,
             parse_mode='HTML',
             reply_markup=reply_markup
@@ -267,7 +267,7 @@ async def handle_back(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int
         )
     else:
         await update.callback_query.message.reply_photo(
-            photo='https://libercard.md/storage/partner/February2021/78tUbaCsWGg58W9D0L1D.jpg',
+            photo=open('logo.jpg', 'rb'),
             caption=start_text,
             parse_mode='HTML',
             reply_markup=reply_markup
