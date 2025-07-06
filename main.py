@@ -28,7 +28,7 @@ logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s
                     level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-CONTACT, BACK_TO_START, MAP, OFFER, REVIEW, COCKTAIL_RECIPE, CHANGE_ADDRESSES, CHANGE_ADMINS, CHANGE_COCKTAIL_RECIPE, CHANGE_CONTACT_INFO, CHANGE_START_MESSAGE, CHANGE_REVIEW, CHANGE_OFFERS = range(13)
+CONTACT, BACK_TO_START, MAP, OFFER, REVIEW, COCKTAIL_RECIPE, CHANGE_ADDRESSES, CHANGE_ADMINS, CHANGE_COCKTAIL_RECIPE, CHANGE_CONTACT_INFO, CHANGE_START_MESSAGE, CHANGE_REVIEW, CHANGE_OFFERS, CHANGE_RECIPE_PHOTOS = range(14)
 
 def read_file(file_name: str) -> str:
     with open(file_name, 'r', encoding='utf-8') as file:
@@ -76,7 +76,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
          InlineKeyboardButton('Oferta lunii', callback_data='offer')],
         [InlineKeyboardButton('Contacte', callback_data='contact')],
         [InlineKeyboardButton('Lăsați o recenzie anonimă', callback_data='review'),
-         InlineKeyboardButton('Rețetă cocktail pe viitor', callback_data='cocktail')],
+         InlineKeyboardButton('Rețetele Cocktail', callback_data='cocktail')],
     ]
     if is_admin:
         keyboard.append([InlineKeyboardButton('Schimba adresele', callback_data='change_addresses')])
@@ -86,6 +86,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
         keyboard.append([InlineKeyboardButton('Schimba mesaj de start', callback_data='change_start_message')])
         keyboard.append([InlineKeyboardButton('Schimba recenzia', callback_data='change_review')])
         keyboard.append([InlineKeyboardButton('Schimba ofertele', callback_data='change_offers')])
+        keyboard.append([InlineKeyboardButton('Schimba poze rețete cocktail', callback_data='change_recipe_photos')])
     reply_markup = InlineKeyboardMarkup(keyboard)
     start_text = read_file('start_text.html')
     if update.message:
@@ -117,6 +118,42 @@ async def save_new_admins(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
 async def change_cocktail_recipe(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     return await handle_change(update, context, 'cocktail_recipe.html',
                                "Please send the new cocktail recipe in HTML format.", CHANGE_COCKTAIL_RECIPE)
+
+async def change_recipe_photos(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    await update.callback_query.answer()
+    keyboard = [[InlineKeyboardButton("Înapoi", callback_data='back')]]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    await update.callback_query.message.reply_text(
+        "Please send the new recipe photos. All existing photos will be deleted.",
+        reply_markup=reply_markup
+    )
+    return CHANGE_RECIPE_PHOTOS
+
+async def save_new_recipe_photos(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    recipe_photos_dir = 'recipes'
+    if update.message.media_group_id:
+        if update.message.media_group_id not in context.bot_data:
+            if not os.path.exists(recipe_photos_dir):
+                os.makedirs(recipe_photos_dir)
+            for file in os.listdir(recipe_photos_dir):
+                file_path = os.path.join(recipe_photos_dir, file)
+                if os.path.isfile(file_path):
+                    os.unlink(file_path)
+            context.bot_data[update.message.media_group_id] = []
+        context.bot_data[update.message.media_group_id].append(update.message)
+        # Adjust the number as needed (e.g., 2 for 2 photos)
+        if len(context.bot_data[update.message.media_group_id]) == 2:
+            for message in context.bot_data[update.message.media_group_id]:
+                if message.photo:
+                    highest_quality_photo = message.photo[-1]
+                    file_id = highest_quality_photo.file_id
+                    new_file = await context.bot.get_file(file_id)
+                    new_file_path = os.path.join(recipe_photos_dir, f"{file_id}.jpg")
+                    await new_file.download_to_drive(new_file_path)
+            del context.bot_data[update.message.media_group_id]
+            await update.message.reply_text("New recipe photos have been updated successfully.")
+            return await start(update, context)
+    return CHANGE_RECIPE_PHOTOS
 
 async def save_new_cocktail_recipe(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     return await handle_save(update, context, 'cocktail_recipe.html')
@@ -231,6 +268,11 @@ async def review(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
 
 async def cocktail_recipe(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     await update.callback_query.answer()
+    receipts_dir = 'recipes'
+    receipt_photos = [os.path.join(receipts_dir, file) for file in os.listdir(receipts_dir) if file.endswith(('jpg', 'jpeg', 'png'))]
+    if receipt_photos:
+        media = [InputMediaPhoto(open(photo, 'rb')) for photo in receipt_photos]
+        await context.bot.send_media_group(chat_id=update.callback_query.from_user.id, media=media)
     recipe_info = read_file('cocktail_recipe.html')
     keyboard = [[InlineKeyboardButton("Înapoi", callback_data='back')]]
     reply_markup = InlineKeyboardMarkup(keyboard)
@@ -247,7 +289,7 @@ async def handle_back(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int
          InlineKeyboardButton('Oferta lunii', callback_data='offer')],
         [InlineKeyboardButton('Contacte', callback_data='contact')],
         [InlineKeyboardButton('Lăsați o recenzie anonimă', callback_data='review'),
-         InlineKeyboardButton('Rețetă cocktail pe viitor', callback_data='cocktail')],
+         InlineKeyboardButton('Rețetele Cocktail', callback_data='cocktail')],
     ]
     if is_admin:
         keyboard.append([InlineKeyboardButton('Schimba adresele', callback_data='change_addresses')])
@@ -257,6 +299,7 @@ async def handle_back(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int
         keyboard.append([InlineKeyboardButton('Schimba mesaj de start', callback_data='change_start_message')])
         keyboard.append([InlineKeyboardButton('Schimba recenzia', callback_data='change_review')])
         keyboard.append([InlineKeyboardButton('Schimba ofertele', callback_data='change_offers')])
+        keyboard.append([InlineKeyboardButton('Schimba poze rețete cocktail', callback_data='change_recipe_photos')])
     reply_markup = InlineKeyboardMarkup(keyboard)
     start_text = read_file('start_text.html')
     if update.callback_query.message.photo:
@@ -307,7 +350,8 @@ def main() -> None:
             CallbackQueryHandler(change_contact_info, pattern='change_contact_info'),
             CallbackQueryHandler(change_start_message, pattern='change_start_message'),
             CallbackQueryHandler(change_review, pattern='change_review'),
-            CallbackQueryHandler(change_offers, pattern='change_offers')
+            CallbackQueryHandler(change_offers, pattern='change_offers'),
+            CallbackQueryHandler(change_recipe_photos, pattern='change_recipe_photos')
         ],
         states={
             BACK_TO_START: [
@@ -356,6 +400,10 @@ def main() -> None:
             ],
             CHANGE_OFFERS: [
                 MessageHandler(filters.PHOTO, save_new_offers),
+                CallbackQueryHandler(handle_back, pattern='back')
+            ],
+            CHANGE_RECIPE_PHOTOS: [
+                MessageHandler(filters.PHOTO, save_new_recipe_photos),
                 CallbackQueryHandler(handle_back, pattern='back')
             ]
         },
