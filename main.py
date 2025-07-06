@@ -28,7 +28,7 @@ logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s
                     level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-CONTACT, BACK_TO_START, MAP, OFFER, REVIEW, COCKTAIL_RECIPE, CHANGE_ADDRESSES, CHANGE_ADMINS, CHANGE_COCKTAIL_RECIPE, CHANGE_CONTACT_INFO, CHANGE_START_MESSAGE, CHANGE_REVIEW, CHANGE_OFFERS, CHANGE_RECIPE_PHOTOS = range(14)
+CONTACT, BACK_TO_START, MAP, OFFER, REVIEW, COCKTAIL_RECIPE, CHANGE_ADDRESSES, CHANGE_ADMINS, CHANGE_COCKTAIL_RECIPE, CHANGE_CONTACT_INFO, CHANGE_START_MESSAGE, CHANGE_REVIEW, CHANGE_OFFERS, CHANGE_RECIPE_PHOTOS, SEND_BROADCAST = range(15)
 
 def read_file(file_name: str) -> str:
     with open(file_name, 'r', encoding='utf-8') as file:
@@ -87,6 +87,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
         keyboard.append([InlineKeyboardButton('Schimba recenzia', callback_data='change_review')])
         keyboard.append([InlineKeyboardButton('Schimba ofertele', callback_data='change_offers')])
         keyboard.append([InlineKeyboardButton('Schimba poze rețete cocktail', callback_data='change_recipe_photos')])
+        keyboard.append([InlineKeyboardButton('Trimite mesaj tuturor', callback_data='send_broadcast')])
     reply_markup = InlineKeyboardMarkup(keyboard)
     start_text = read_file('start_text.html')
     if update.message:
@@ -217,6 +218,31 @@ async def change_offers(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
     )
     return CHANGE_OFFERS
 
+async def send_broadcast(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    await update.callback_query.answer()
+    keyboard = [[InlineKeyboardButton("Înapoi", callback_data='back')]]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    await update.callback_query.message.reply_text(
+        "Trimite mesajul pe care vrei să-l trimiți tuturor utilizatorilor.",
+        reply_markup=reply_markup
+    )
+    return SEND_BROADCAST
+
+async def do_broadcast(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    message = update.message.text
+    # Load all user IDs from Google Sheets
+    sheet = connect_to_google_sheets("DrinkStock")
+    users = sheet.get_all_values()
+    user_ids = set(row[0] for row in users if row and row[0].isdigit())
+    count = 0
+    for user_id in user_ids:
+        try:
+            await context.bot.send_message(chat_id=int(user_id), text=message)
+            count += 1
+        except Exception as e:
+            logger.warning(f"Could not send to {user_id}: {e}")
+    await update.message.reply_text(f"Mesajul a fost trimis la {count} utilizatori.")
+    return await start(update, context)
 
 async def save_new_offers(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     offer_photos_dir = 'offers'
@@ -300,6 +326,7 @@ async def handle_back(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int
         keyboard.append([InlineKeyboardButton('Schimba recenzia', callback_data='change_review')])
         keyboard.append([InlineKeyboardButton('Schimba ofertele', callback_data='change_offers')])
         keyboard.append([InlineKeyboardButton('Schimba poze rețete cocktail', callback_data='change_recipe_photos')])
+        keyboard.append([InlineKeyboardButton('Trimite mesaj tuturor', callback_data='send_broadcast')])
     reply_markup = InlineKeyboardMarkup(keyboard)
     start_text = read_file('start_text.html')
     if update.callback_query.message.photo:
@@ -367,7 +394,8 @@ def main() -> None:
                 CallbackQueryHandler(change_contact_info, pattern='change_contact_info'),
                 CallbackQueryHandler(change_start_message, pattern='change_start_message'),
                 CallbackQueryHandler(change_review, pattern='change_review'),
-                CallbackQueryHandler(change_offers, pattern='change_offers')
+                CallbackQueryHandler(change_offers, pattern='change_offers'),
+                CallbackQueryHandler(send_broadcast, pattern='send_broadcast'),
             ],
             CONTACT: [CallbackQueryHandler(handle_back, pattern='back')],
             MAP: [CallbackQueryHandler(handle_back, pattern='back')],
@@ -405,7 +433,11 @@ def main() -> None:
             CHANGE_RECIPE_PHOTOS: [
                 MessageHandler(filters.PHOTO, save_new_recipe_photos),
                 CallbackQueryHandler(handle_back, pattern='back')
-            ]
+            ],
+            SEND_BROADCAST: [
+                MessageHandler(filters.TEXT & ~filters.COMMAND, do_broadcast),
+                CallbackQueryHandler(handle_back, pattern='back')
+            ],
         },
         fallbacks=[
             CommandHandler('start', start),
